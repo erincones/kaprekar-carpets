@@ -54,8 +54,8 @@ class Carpet():
     """
     Base 10 Kaprekar's carpet for four or three digits
     """
-    
-    __rgb_palette = {
+
+    _rgb_palette = {
         "none": (0x00, 0x00, 0x00),
         "border": (0x00, 0x00, 0x00),
         0: (0xFF, 0xFF, 0xFF),
@@ -67,8 +67,8 @@ class Carpet():
         6: (0xFE, 0x00, 0xDA),
         7: (0xFE, 0x00, 0x00)
     }
-    
-    __bw_palette = {
+
+    _bw_palette = {
         "none": (0x00, 0x00, 0x00),
         "border": (0x00, 0x00, 0x00),
         0: (0x1F, 0x1F, 0x1F),
@@ -79,18 +79,17 @@ class Carpet():
         5: (0xBF, 0xBF, 0xBF),
         6: (0xDF, 0xDF, 0xDF),
         7: (0xFF, 0xFF, 0xFF)
-
     }
-    
-    
+
+
     @staticmethod
-    def palette(name):
+    def known_palette(name):
         if name == "rgb":
-            return deepcopy(Carpet.__rgb_palette)
+            return deepcopy(Carpet._rgb_palette)
         if name == "bw":
-            return deepcopy(Carpet.__bw_palette)
+            return deepcopy(Carpet._bw_palette)
         raise ValueError("unknown palette")
-    
+
     @staticmethod
     def kaprekar(n, pad=None):
         """
@@ -99,141 +98,154 @@ class Carpet():
         d = str(n)
         s = sorted(d.ljust(pad, "0") if pad and pad > len(d) else d)
         return int("".join(reversed(s))) - int("".join(s))
-    
-    
+
+
     def __init__(self, digits=4, cell_size=5, border_size=1, palette="rgb"):
         """
         Constructor
         """
-        self.setDigits(digits)
-        self.setCellSize(cell_size)
-        self.setBorderSize(border_size)
-        self.setPalette(palette)
-    
-    
-    def __coord(self, x, y):
+        self.digits = digits
+        self.cell_size = cell_size
+        self.border_size = border_size
+        self.palette = palette
+
+
+    def _coord(self, x, y):
         """
         Get the coordinate of the upper left pixel for the given cell
         """
-        scale = self.__cell_size + self.__border_size
-        return (x * scale + self.__border_size, y * scale + self.__border_size)
-    
-    
-    def setDigits(self, digits):
+        scale = self._cell_size + self._border_size
+        return (x * scale + self._border_size, y * scale + self._border_size)
+
+    @property
+    def digits(self):
+        """
+        Get the number of digits
+        """
+        return self._n
+
+    @property
+    def cell_size(self):
+        """
+        Get the cell size
+        """
+        return self._cell_size
+
+    @property
+    def border_size(self):
+        """
+        Get the border size
+        """
+        return self._border_size
+
+    @property
+    def palette(self):
+        """
+        Get the palette
+        """
+        return deepcopy(self._palette)
+
+    @property
+    def image(self):
+        """
+        Get the carpet image
+        """
+        self.build()
+        return self._img.copy()
+
+
+    @digits.setter
+    def digits(self, digits):
         """
         Set the number of digits
         """
         if digits != 3 and digits != 4:
             raise ValueError("only 3 and 4 are valid for the digits argument")
-        
-        self.__n = digits
-        self.__modified = True
-    
-    def setCellSize(self, cell_size):
+
+        self._n = digits
+        self._modified = True
+
+    @cell_size.setter
+    def cell_size(self, cell_size):
         """
         Set the cell size
         """
         if cell_size < 1:
             raise ValueError("the cell size must be greater than zero")
-        
-        self.__cell_size = cell_size
-        self.__modified = True
-    
-    def setBorderSize(self, border_size):
+
+        self._cell_size = cell_size
+        self._modified = True
+
+    @border_size.setter
+    def border_size(self, border_size):
         """
         Set the cell border size
         """
         if border_size < 0:
             raise ValueError("the border size cannot be negative")
-        
-        self.__border_size = border_size
-        self.__modified = True
-    
-    def setPalette(self, palette):
+
+        self._border_size = border_size
+        self._modified = True
+
+    @palette.setter
+    def palette(self, palette):
         """
         Set the carpet palette
         """
         if isinstance(palette, str):
-            self.__palette = Carpet.palette(palette)
+            self._palette = Carpet.known_palette(palette)
         elif palette:
             palette = deepcopy(palette)
             for prop in [ "none", "border" ]:
                 if not prop in palette:
-                    palette[prop] = Carpet.__bw_palette[prop]
-            self.__palette = palette
-        self.__modified = True
-    
-    
-    def getCellSize(self):
-        """
-        Get the cell size
-        """
-        return self.__cell_size
-    
-    def getBorderSize(self):
-        """
-        Get the border size
-        """
-        return self.__border_size
-    
-    def getPalette(self):
-        """
-        Get the palette
-        """
-        return deepcopy(self.__palette)
-        
-    def getImage(self):
-        """
-        Get the carpet image
-        """
-        self.build()
-        return self.__img.copy()
-    
-    
+                    palette[prop] = Carpet._bw_palette[prop]
+            self._palette = palette
+        self._modified = True
+
     def build(self):
         """
         Build the Kaprekar's carpet
         """
-        if not self.__modified:
+        if not self._modified:
             return
-        
-        zeros, fit = divmod(self.__n, 2)
+
+        zeros, fit = divmod(self._n, 2)
         rows = 10 ** zeros
         cols = 10 ** (zeros + fit)
-        
-        self.__img = Image.new(mode="RGB", size=self.__coord(cols, rows), color=self.__palette["border"])
-        pixel = self.__img.load()
-        
-        for n in range(10 ** self.__n):
+
+        self._img = Image.new(mode="RGB", size=self._coord(cols, rows), color=self._palette["border"])
+        pixel = self._img.load()
+
+        for n in range(10 ** self._n):
             row, col = divmod(n, cols)
 
             k_0 = n
-            k_1 = Carpet.kaprekar(k_0, self.__n)
+            k_1 = Carpet.kaprekar(k_0, self._n)
             color = None
 
             if k_1:
                 i = 0
                 while k_1 != k_0:
                     k_0 = k_1
-                    k_1 = Carpet.kaprekar(k_0, self.__n)
+                    k_1 = Carpet.kaprekar(k_0, self._n)
                     i += 1
-                color = self.__palette[i] if i in self.__palette else 3 * (i,)
+                color = self._palette[i] if i in self._palette else 3 * (i,)
             else:
-                color = self.__palette["none"]
+                color = self._palette["none"]
 
-            x, y = self.__coord(col, row)
-            for l in range(x, x + self.__cell_size):
-                for m in range(y, y + self.__cell_size):
+            x, y = self._coord(col, row)
+            for l in range(x, x + self._cell_size):
+                for m in range(y, y + self._cell_size):
                     pixel[l, m] = color
-        
-        self.__modified = False
+
+        self._modified = False
 ```
 ```python
 from IPython.display import display
 
 # Carpet and BW palette with red constant
 carpet = Carpet()
-bw = Carpet.palette("bw")
+bw = Carpet.known_palette("bw")
 bw[0] = (0xFF, 0x00, 0x00)
 
 def saveAndDisplay(img, name):
@@ -248,11 +260,11 @@ def saveAndDisplay(img, name):
 
 ```python
 # RGB carpet
-saveAndDisplay(carpet.getImage(), "carpet4_rgb.png")
+saveAndDisplay(carpet.image, "carpet4_rgb.png")
 
 # BW carpet
-carpet.setPalette(bw)
-saveAndDisplay(carpet.getImage(), "carpet4_bw.png")
+carpet.palette = bw
+saveAndDisplay(carpet.image, "carpet4_bw.png")
 ```
 
 ![Four digits kaprekar carpet (RGB)](carpet4_rgb.png)
@@ -262,13 +274,13 @@ saveAndDisplay(carpet.getImage(), "carpet4_bw.png")
 
 ```python
 # RGB carpet
-carpet.setDigits(3)
-carpet.setPalette("rgb")
-saveAndDisplay(carpet.getImage(), "carpet3_rgb.png")
+carpet.digits = 3
+carpet.palette = "rgb"
+saveAndDisplay(carpet.image, "carpet3_rgb.png")
 
 # BW carpet
-carpet.setPalette(bw)
-saveAndDisplay(carpet.getImage(), "carpet3_bw.png")
+carpet.palette = bw
+saveAndDisplay(carpet.image, "carpet3_bw.png")
 ```
 
 ![Three digits kaprekar carpet (RGB)](carpet3_rgb.png)
